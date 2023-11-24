@@ -3,10 +3,12 @@ const sharp = require("sharp");
 
 const inputDirectory = "./input_images";
 const outputDirectory = "./output_images";
-const targetFileSizeKB = 300;
+const targetFileSizeKB = 90;
 const maxResolution = 1920;
+const maxQuality = 80;
+const minQuality = 55;
+const qualityStep = 5;
 
-let sharpResizeResolution = 1920;
 if (!fs.existsSync(outputDirectory)) {
   fs.mkdirSync(outputDirectory);
 }
@@ -19,9 +21,8 @@ const processImage = async (file) => {
   const imageInfo = await sharp(inputPath).metadata();
   const currentResolution = Math.max(imageInfo.width, imageInfo.height);
 
-  if (currentResolution < maxResolution && fs.statSync(inputPath).size / 1024 < targetFileSizeKB) {
-
-    // burada node.js ile direk kopyalama yap
+  if (currentResolution <= maxResolution && fs.statSync(inputPath).size / 1024 <= targetFileSizeKB) {
+    // Dosya zaten istenen boyutta ve boyutta, kopyala
     fs.copyFile(inputPath, outputPath, (err) => {
       if (err) {
         console.error(`${file} kopyalanırken hata oluştu:`, err);
@@ -29,27 +30,13 @@ const processImage = async (file) => {
         console.log(`${file} sadece orijinal boyut ve çözünürlüğü ile kopyalandı.`);
       }
     });
-
-    // await sharp(inputPath)
-    //   .rotate()
-    //   // .resize(null, null, {
-    //   //   fit: sharp.fit.inside,
-    //   // })
-    //   .toFormat(format === "png" ? "png" : "jpeg", {
-    //     quality: 70, // or your default quality
-    //   })
-    //   .toFile(outputPath);
-
-      // console.log(`${file} w->${imageInfo.width} h->${imageInfo.height}, s->${fs.statSync(inputPath).size}`);
-    console.log(`${file} sadece orijinal boyut ve çözünürlüğü ile kopyalandı.`);
   } else {
-    if (currentResolution < maxResolution) {
-      sharpResizeResolution = currentResolution;
+    let sharpResizeResolution = currentResolution;
+
+    if (currentResolution > maxResolution) {
+      sharpResizeResolution = maxResolution;
     }
 
-    const maxQuality = 90;
-    const minQuality = 1;
-    const qualityStep = 5;
     let currentQuality = maxQuality;
     let currentSizeKB = Infinity;
 
@@ -81,7 +68,7 @@ const processImage = async (file) => {
       })
       .toFile(outputPath);
 
-    console.log(`${file} boyutlandırıldı ve ${currentSizeKB} KB olarak kaydedildi.`);
+    console.log(`${file} boyutlandırıldı ve ${currentSizeKB} KB olarak kaydedildi. [sharpResizeResolution=> ${sharpResizeResolution}, currentQuality=> ${currentQuality}]`);
   }
 };
 
